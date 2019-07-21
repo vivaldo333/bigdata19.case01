@@ -38,8 +38,10 @@ def cloudsdk(c, cmdline):
     get_path = get_docker_toolbox_mount_path if is_docker_toolbox(c) else get_docker_desktop_mount_path
 
     c.run(f'docker run --rm '
-        f'-v "{get_path(cfg.GCP_KEY_FILE)}:/gcloud.json" '
-        f'-v "{get_path(cfg.BUILDDIR)}:/{cfg.BUILDDIR.name}" '
+        #f'-v "{get_path(cfg.GCP_KEY_FILE)}:/gcloud.json" '
+        f'-v /d/ITEA/_PROJECT/My/bigdata19.case01/secret/gcloud.json:/gcloud.json '
+        #f'-v "{get_path(cfg.BUILDDIR)}:/{cfg.BUILDDIR.name}" '
+        f'-v /d/ITEA/_PROJECT/My/bigdata19.case01/build:/build '
         f'{cfg.CLOUDSDK_IMAGE} '
         f'bash -c "gcloud auth activate-service-account --key-file=/gcloud.json --project {cfg.GCP_PROJECT_ID} '
             f'&& {cmdline}"',
@@ -87,8 +89,8 @@ def get_docker_toolbox_mount_path(path: Path) -> str:
     """Get the bind mount path for Docker Toolbox."""
     p = path.resolve()
     mountpath = f'/{p.drive.lower().replace(":", "")}/{Path(*p.parts[1:]).as_posix()}'
-    if not mountpath.startswith('/c/Users/'):
-        raise ValueError('Only files under C:/Users/ can be shared automatically with Docker Toolbox.')
+#    if not mountpath.startswith('/c/Users/'):
+#        raise ValueError('Only files under C:/Users/ can be shared automatically with Docker Toolbox.')
     return mountpath
 
 

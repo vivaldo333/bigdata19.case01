@@ -10,6 +10,7 @@ import config as cfg
 
 
 YAHOO_HTMLS = cfg.BUILDDIR / 'yahoo_html'
+SYNC_YAHOO_HTMLS = cfg.BUILDDIR / 'yahoo_html_sync'
 
 
 NASDAQ_FILES = (
