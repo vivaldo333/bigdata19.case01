@@ -4,6 +4,7 @@ import asyncio
 from collections import defaultdict
 import csv
 import io
+import lxml.html
 from pathlib import Path
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -15,8 +16,9 @@ import config as cfg
 
 YAHOO_ARCH = cfg.BUILDDIR / 'yahoo.tbz2'
 YAHOO_HTMLS = cfg.BUILDDIR / 'yahoo_html'
-YAHOO_PARQUET = cfg.BUILDDIR / 'yahoo.parquet'
+YAHOO_PARQUET = cfg.BUILDDIR / 'yahoo_my.parquet'
 SYNC_YAHOO_HTMLS = cfg.BUILDDIR / 'yahoo_html_sync'
+YAHOO_DATA = cfg.BUILDDIR / "yahoo.csv"
 
 
 NASDAQ_FILES = (
@@ -117,9 +119,38 @@ def decompress_descriptions(encoding='utf-8'):
 
     progress.close()
 
+def parse_descriptions(src=YAHOO_PARQUET, dst=YAHOO_DATA):
+    """Parse scraped pages."""
+    reader = pq.ParquetFile(src)
+
+    with tqdm(total=reader.metadata.num_rows) as progress:
+        with open(dst, 'w', newline='', encoding="utf-8") as f:
+            #write symbol and description from html in csv file
+            writer = csv.DictWriter(f, fieldnames=['symbol', 'sector', 'industry', 'employees', 'description'])
+            writer.writeheader()
+            #loop for fetching parquet groups
+            #to_pydict возвращает колоночное представление pyarrow таблицы
+            for g in range(reader.metadata.num_row_groups):
+                table = reader.read_row_group(g).to_pydict()
+                #режим debug-а
+                #breakpoint() c-continue, q-quit
+                for symbol, html in zip(table['symbol'], table['html']):
+                    tree = lxml.html.fromstring(html)
+                    #обявляем словарь
+                    row = {'symbol':symbol.strip()}
+                    #// - пропускаем элементы до вложенности . - стартовать от текущего элимента
+                    #получить тег section, что содержит тег h2, в котором есть Description текст
+                    row['description'] = '\n'.join(tree.xpath('//section[h2//*[text()="Description"]]/p/text()'))
+                    info = (tree.xpath('//div[@class="asset-profile-container"]//p[span[text()="Sector"]]') or [None])[0]
+                    if info is not None:
+                        row['sector'] = (info.xpath('./span[text()="Sector"]/following-sibling::span[1]/text()') or [''])[0]
+                        row['industry'] = (info.xpath('./span[text()="Industry"]/following-sibling::span[1]/text()') or [''])[0]
+                        row['employees'] = (info.xpath('./span[text()="Full Time Employees"]/following-sibling::span[1]/span/text()') or [''])[0].replace(',', '')
+                    writer.writerow(row)
+                    progress.update()
 
 def main():
-    scrape_descriptions_async()
+    parse_descriptions()
 
 
 if __name__ == '__main__':
