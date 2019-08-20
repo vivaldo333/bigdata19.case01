@@ -19,7 +19,6 @@ YAHOO_DATA = cfg.BUILDDIR / 'yahoo.csv'
 YAHOO_HTMLS = cfg.BUILDDIR / 'yahoo_html'
 YAHOO_PARQUET = cfg.BUILDDIR / 'yahoo_my.parquet'
 SYNC_YAHOO_HTMLS = cfg.BUILDDIR / 'yahoo_html_sync'
-YAHOO_DATA = cfg.BUILDDIR / "yahoo.csv"
 
 
 NASDAQ_FILES = (

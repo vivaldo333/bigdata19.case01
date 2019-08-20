@@ -22,16 +22,21 @@ from collections import defaultdict
 import datetime
 from dateutil.relativedelta import relativedelta
 import json
+#from json2parquet import convert_json
 import os
 import requests
 import pyarrow as pa
 import pyarrow.parquet as pq
+import pandas as pd
 from tqdm import tqdm
+from urllib.request import urlretrieve
 
 CURRENCYDDIR = cfg.BUILDDIR / 'currency'
 CURRENCYDDIR.mkdir(parents=True, exist_ok=True)
 CURRENCY_DESC_FILE = 'currency_list.json'
 CURRENCY_DESC_JSON = CURRENCYDDIR / CURRENCY_DESC_FILE
+BREND_OIL_PATH = CURRENCYDDIR / 'brent-daily.csv'
+BREND_OIL_PARQUET = CURRENCYDDIR / 'data_BREND.parquet'
 CURRENCIES_AUTH_REQUEST = cfg.SECRETDIR / 'currencies.json'
 AVAILABLE_CURRENCY_CODES = ['CAD','CHF','EUR','GBP','JPY','PLN']
 BASE_CURRENCY='USD'
@@ -146,12 +151,32 @@ def convert_json_to_parquet(encoding='utf-8', batch_size=180, compression='BROTL
         file_name = CURRENCYDDIR / str('data_' + currency_code + '.parquet')
         with closing(pq.ParquetWriter(file_name, schema, use_dictionary=False, compression=compression, flavor={'spark'})) as writer:
             read_incremental(currency_code)
+
+def load_brend_oil_rates() :
+    URL = "https://datahub.io/core/oil-prices/r/brent-daily.csv"
+    filename, message = urlretrieve(URL, BREND_OIL_PATH)
+
+def convert_csv_to_parquet():
+    df = pd.read_csv(BREND_OIL_PATH)
+    df.to_parquet(BREND_OIL_PARQUET)
+
+def convert_parquet_to_csv():
+    from_file = CURRENCYDDIR / 'data_EUR.parquet'
+    to_file = CURRENCYDDIR / 'data_EUR_copy.json'
+    file_copy = CURRENCYDDIR / 'brent-daily_copy.csv'
+    #df = pd.read_parquet(BREND_OIL_PARQUET)
+    #df.to_csv(file_copy)
+    df2 = pd.read_parquet(from_file)
+    df2.to_json(to_file)
 ########################################################################
 def scrape_data():
     """Scrape custom data."""
     save_currency_desc_to_file()
     load_rate_history()
     convert_json_to_parquet()
+    load_brend_oil_rates()
+    convert_csv_to_parquet()
+    #convert_parquet_to_csv()
 
 def main():
     scrape_data()
